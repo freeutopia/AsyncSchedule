@@ -1,4 +1,4 @@
-package com.utopia.dispatcher.schedule;
+package com.utopia.dispatcher.sort;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -46,14 +46,14 @@ public class Graph {
                 indegree[node]++;
             }
         }
-        Queue<Integer> queue = new LinkedList<Integer>();
+        Queue<Integer> queue = new LinkedList<>();
         for (int i = 0; i < mVerticalCount; i++) {//找出所有入度为0的点
             if (indegree[i] == 0) {
                 queue.add(i);
             }
         }
         int cnt = 0;
-        Vector<Integer> topOrder = new Vector<Integer>();
+        Vector<Integer> topOrder = new Vector<>();
         while (!queue.isEmpty()) {
             Integer u = queue.poll();
             topOrder.add(u);

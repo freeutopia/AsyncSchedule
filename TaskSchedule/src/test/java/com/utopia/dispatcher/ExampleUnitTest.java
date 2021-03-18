@@ -1,6 +1,12 @@
 package com.utopia.dispatcher;
 
+import android.util.Log;
+
+import com.utopia.dispatcher.task.Task;
+
 import org.junit.Test;
+
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
 
@@ -11,7 +17,31 @@ import static org.junit.Assert.*;
  */
 public class ExampleUnitTest {
     @Test
-    public void addition_isCorrect() {
-        assertEquals(4, 2 + 2);
+    public void taskDispatchTest() {
+        TaskDispatcher dispatcher = new TaskDispatcher();
+        Task1 task1 = new Task1();
+
+        dispatcher.add(task1).add(new Task2()).add(new Task() {
+            @Override
+            public void run() {
+                try {
+                    System.out.println("进入了Task");
+                    TimeUnit.SECONDS.sleep(2);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }finally {
+                    System.out.println("执行完了Task");
+                }
+            }
+        });
+
+        dispatcher.start();
+
+
+        try {
+            dispatcher.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

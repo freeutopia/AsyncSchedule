@@ -27,6 +27,7 @@ public interface ITask {
     ExecutorService getRunThread();
 
     boolean runOnMainThread();
+
     /**
      * 依赖关系
      */
@@ -37,7 +38,4 @@ public interface ITask {
      */
     boolean needWait();
 
-    void setTaskCallBack(TaskCallBack callBack);
-
-    boolean needCall();
 }

@@ -10,7 +10,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 /**
- * 延迟初始化分发器
+ * 空闲时任务分发器
  */
 public final class DelayDispatcher implements Dispatcher{
 
@@ -31,8 +31,8 @@ public final class DelayDispatcher implements Dispatcher{
     }
 
     @Override
-    public boolean remove(Task task) {
-        return mDelayTasks.remove(task);
+    public void finish(Task task) {
+        mDelayTasks.remove(task);
     }
 
     @Override
@@ -41,13 +41,7 @@ public final class DelayDispatcher implements Dispatcher{
     }
 
     @Override
-    public void interrupt() {
+    public void interruptAll() {
         mDelayTasks.clear();
     }
-
-    @Override
-    public void await() {
-        //...空闲时任务，不支持阻塞
-    }
-
 }

@@ -1,4 +1,4 @@
-package com.utopia.dispatcher.schedule;
+package com.utopia.dispatcher.sort;
 
 import com.utopia.dispatcher.task.Task;
 
@@ -19,7 +19,6 @@ public class ScheduleUtil {
      */
     public static synchronized List<Task> getSortResult(List<Task> originTasks,
                                                         List<Class<? extends Task>> clsLaunchTasks) {
-        long makeTime = System.currentTimeMillis();
 
         Set<Integer> dependSet = new ArraySet<>();
         Graph graph = new Graph(originTasks.size());

@@ -10,9 +10,9 @@ public interface Dispatcher {
     Dispatcher add(Task task);
 
     /**
-     * 移除任务
+     * 结束任务
      */
-    boolean remove(Task task);
+    void finish(Task task);
 
     /**
      * 执行任务
@@ -22,10 +22,10 @@ public interface Dispatcher {
     /**
      * 中断任务
      */
-    void interrupt();
+    void interruptAll();
 
     /**
      * 等待任务（阻塞方法，慎用）
      */
-    void await();
+    default void await() throws InterruptedException {}
 }

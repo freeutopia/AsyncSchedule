@@ -1,11 +1,14 @@
 package com.utopia.dispatcher;
 
+import com.utopia.dispatcher.executor.Platform;
 import com.utopia.dispatcher.executor.RealRunnable;
-import com.utopia.dispatcher.schedule.ScheduleUtil;
+import com.utopia.dispatcher.sort.ScheduleUtil;
 import com.utopia.dispatcher.task.Task;
 import com.utopia.dispatcher.task.TaskStatus;
-import com.utopia.dispatcher.utils.Utils;
+import com.utopia.dispatcher.utils.ArraysUtils;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -16,33 +19,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 启动器调用类
  */
-public class TaskDispatcher implements Dispatcher{
+public class TaskDispatcher implements Dispatcher {
     private volatile boolean started = false;//一个任务调度器，只能执行一次
 
     private final List<Future<?>> mFutures = new ArrayList<>();
-    private List<Task> mAllTasks = new ArrayList<>();
+    private List<Task> mAllTasks = new ArrayList<>();//所有任务
     private final List<Class<? extends Task>> mClsAllTasks = new ArrayList<>();
-    private final List<Task> mMainThreadTasks = new ArrayList<>();
-    private CountDownLatch mCountDownLatch;
 
-    /**
-     * 需要等待的任务数
-     */
+    //处理任务间依赖关系
+    private final List<Class<? extends Task>> mFinishedTasks = new ArrayList<>();//已经结束的Task
+    private final HashMap<Class<? extends Task>, List<Task>> mDependedHashMap = new HashMap<>();//任务间依赖树
+
+    //配合task的ifNeedWait方法和Dispatcher的await方法使用，用来完成线程等待
     private final AtomicInteger mNeedWaitCount = new AtomicInteger();
-
-
-    /**
-     * 已经结束的Task
-     */
-    private final List<Class<? extends Task>> mFinishedTasks = new ArrayList<>();
-
-    private final HashMap<Class<? extends Task>, ArrayList<Task>> mDependedHashMap = new HashMap<>();
-
-    /**
-     * 启动器分析的次数，统计下分析的耗时；
-     */
-    private final AtomicInteger mAnalyseCount = new AtomicInteger();
-
+    private CountDownLatch mCountDownLatch;
 
     @Override
     public synchronized Dispatcher add(Task task) {
@@ -50,7 +40,7 @@ public class TaskDispatcher implements Dispatcher{
             throw new IllegalThreadStateException();
 
         if (task != null) {
-            collectDepends(task);
+            buildDepends(task);
             mAllTasks.add(task);
             mClsAllTasks.add(task.getClass());
             // 非主线程且需要wait的，主线程不需要CountDownLatch也是同步的
@@ -62,45 +52,58 @@ public class TaskDispatcher implements Dispatcher{
     }
 
     @Override
-    public boolean remove(Task task) {
+    public void finish(Task task) {
+        if (!started)
+            throw new IllegalThreadStateException();
+
         if (ifNeedWait(task)) {
             mFinishedTasks.add(task.getClass());
-            mCountDownLatch.countDown();
+
             mNeedWaitCount.getAndDecrement();
+            mCountDownLatch.countDown();
         }
-        return true;
+
+        //给任务打上结束标签
+        task.updateStatus(TaskStatus.FINISHED);
+
+        //通知分发器，前置任务已完成
+        preTaskFinished(task);
     }
 
     @Override
     public synchronized void start() {
-        if (started)
+        if (started || mAllTasks.isEmpty())
             throw new IllegalThreadStateException();
         started = true;
 
-        if (mAllTasks.size() > 0) {
-            mAnalyseCount.getAndIncrement();
-            mAllTasks = ScheduleUtil.getSortResult(mAllTasks, mClsAllTasks);
-            mCountDownLatch = new CountDownLatch(mNeedWaitCount.get());
+        mAllTasks = ScheduleUtil.getSortResult(mAllTasks, mClsAllTasks);
+        mCountDownLatch = new CountDownLatch(mNeedWaitCount.get());
 
-            sendAndExecuteAsyncTasks();
-            executeTaskMain();
-        }
+        //分发任务
+        dispatherTasks();
     }
 
     @Override
-    public void interrupt() {
-        for (Future<?> future : mFutures) {
+    public void interruptAll() {
+        Platform.get().interruptAll();//停止主线程后续任务执行
+        for (Future<?> future : mFutures) {//停止子线程后续任务执行
             future.cancel(true);
         }
     }
 
-    private void collectDepends(Task task) {
-        if (task.dependsOn() != null && task.dependsOn().size() > 0) {
+    /**
+     * 构建任务间依赖关系
+     */
+    private void buildDepends(Task task) {
+        if (!ArraysUtils.isEmpty(task.dependsOn())) {
             for (Class<? extends Task> cls : task.dependsOn()) {
-                if (mDependedHashMap.get(cls) == null) {
-                    mDependedHashMap.put(cls, new ArrayList<Task>());
+                List<Task> tasks = mDependedHashMap.get(cls);
+                if (tasks == null) {
+                    mDependedHashMap.put(cls, Collections.singletonList(task));
+                }else{
+                    tasks.add(task);
                 }
-                mDependedHashMap.get(cls).add(task);
+
                 if (mFinishedTasks.contains(cls)) {
                     task.satisfy();
                 }
@@ -112,68 +115,49 @@ public class TaskDispatcher implements Dispatcher{
         return !task.runOnMainThread() && task.needWait();
     }
 
-    private void executeTaskMain() {
-        for (Task task : mMainThreadTasks) {
-            new RealRunnable(task, this).run();
-        }
-    }
-
     /**
-     * 发送去并且执行异步任务
+     * 开始分发任务
      */
-    private void sendAndExecuteAsyncTasks() {
+    private synchronized void dispatherTasks() {
+        List<Runnable> mainThreadTasks = new ArrayList<>();//主线程任务
+
         for (Task task : mAllTasks) {
-            if (task.runOnMainThread() && !Utils.isMainProcess()) {
-                remove(task);
+            task.updateStatus(TaskStatus.DISPATCHERED);//更新任务状态->已分发
+            Runnable runnable = new RealRunnable(task, this);
+
+            if (task.runOnMainThread()) {
+                mainThreadTasks.add(runnable);
             } else {
-                sendTaskReal(task);
+                mFutures.add(task.submit(runnable));
             }
-            task.updateStatus(TaskStatus.DISPATCHERED);
         }
+
+        //执行当前线程任务(平台相关：如果是Android则切换到UI线程执行)
+        Platform.get().executeOnMainThread(mainThreadTasks);
     }
 
     /**
      * 通知Children一个前置任务已完成
      */
-    public void satisfyChildren(Task launchTask) {
-        ArrayList<Task> arrayList = mDependedHashMap.get(launchTask.getClass());
-        if (arrayList != null && arrayList.size() > 0) {
-            for (Task task : arrayList) {
+    private void preTaskFinished(Task launchTask) {
+        List<Task> tasks = mDependedHashMap.get(launchTask.getClass());
+        if (tasks != null && tasks.size() > 0) {
+            for (Task task : tasks) {
                 task.satisfy();
             }
         }
     }
 
-    /**
-     * 发送任务
-     */
-    private void sendTaskReal(final Task task) {
-        if (task.runOnMainThread()) {
-            mMainThreadTasks.add(task);
-            if (task.needCall()) {
-                task.setTaskCallBack(() -> {
-                    task.updateStatus(TaskStatus.FINISHED);
-                    satisfyChildren(task);
-                    remove(task);
-                });
-            }
-        } else {
-            // 直接发，是否执行取决于具体线程池
-            Future<?> future = task.submit(new RealRunnable(task, this));
-            mFutures.add(future);
-        }
-    }
+
 
     @Override
-    public void await() {
-        try {
-            if (mNeedWaitCount.get() > 0) {
-                if (mCountDownLatch == null) {
-                    throw new RuntimeException("You have to call start() before call await()");
-                }
-                mCountDownLatch.await(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
-            }
-        } catch (InterruptedException ignored) {
+    public void await() throws InterruptedException {
+        if (!started || mCountDownLatch == null) {
+            throw new InterruptedException("You have to call start() before call await()");
+        }
+
+        if (mNeedWaitCount.get() > 0) {
+            mCountDownLatch.await(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
         }
     }
 }

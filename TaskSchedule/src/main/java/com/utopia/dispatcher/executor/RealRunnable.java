@@ -24,19 +24,19 @@ public class RealRunnable implements Runnable {
 
     @Override
     public void run() {
-        Process.setThreadPriority(mTask.priority());//更新线程优先级
+        Platform.get().setThreadPriority(mTask.priority());//更新线程优先级
 
+        //此处用来处理任务间的依赖关系
         mTask.updateStatus(TaskStatus.WAITING);//更新状态机-》等待状态
-        mTask.waitToSatisfy();//当前Task等待，让依赖的Task先执行
+        mTask.waitToSatisfy();//当前Task等待，依赖的Task先执行
 
         // 执行Task
         mTask.updateStatus(TaskStatus.RUNNING);//更新状态机-》运行状态
         mTask.run();//执行task任务
-
         mTask.updateStatus(TaskStatus.FINISHED);
+
         if (mTaskDispatcher != null) {
-            mTaskDispatcher.satisfyChildren(mTask);
-            mTaskDispatcher.remove(mTask);
+            mTaskDispatcher.finish(mTask);
         }
     }
 }

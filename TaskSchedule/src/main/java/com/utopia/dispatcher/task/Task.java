@@ -5,11 +5,14 @@ import android.os.Process;
 import com.utopia.dispatcher.executor.DispatcherExecutor;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public abstract class Task implements ITask {
+    private final String mTaskId = UUID.randomUUID().toString();//为每个task构建出唯一标识
+
     private volatile @TaskStatus int mTaskStatus = TaskStatus.IDEL;
 
     // 当前Task依赖的Task数量（需要等待被依赖的Task执行完毕才能执行自己），默认没有依赖
@@ -87,14 +90,6 @@ public abstract class Task implements ITask {
         return null;
     }
 
-    @Override
-    public void setTaskCallBack(TaskCallBack callBack) {}
-
-    @Override
-    public boolean needCall() {
-        return false;
-    }
-
 
     public boolean isSend() {
         return mTaskStatus == TaskStatus.DISPATCHERED;
@@ -105,5 +100,9 @@ public abstract class Task implements ITask {
      */
     public void updateStatus(@TaskStatus int status){
         this.mTaskStatus = status;
+    }
+
+    public String getId(){
+        return mTaskId;
     }
 }
