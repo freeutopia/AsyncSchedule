@@ -3,6 +3,7 @@ package com.utopia.dispatcher;
 import com.utopia.dispatcher.executor.Platform;
 import com.utopia.dispatcher.executor.RealRunnable;
 import com.utopia.dispatcher.sort.ScheduleUtil;
+import com.utopia.dispatcher.task.ScheduleOn;
 import com.utopia.dispatcher.task.Task;
 import com.utopia.dispatcher.utils.ArraysUtils;
 
@@ -107,27 +108,21 @@ public class TaskDispatcher implements Dispatcher {
     }
 
     private boolean ifNeedWait(Task task) {
-        return !task.runOnMainThread() && task.needWait();
+        return task.needWait() && !(task.scheduleOn() == ScheduleOn.UI);
     }
 
     /**
      * 开始分发任务
      */
     private synchronized void dispatherTasks() {
-        List<Runnable> mainThreadTasks = new ArrayList<>();//主线程任务
-
         for (Task task : mAllTasks) {
-            Runnable runnable = new RealRunnable(task, this);
-
-            if (task.runOnMainThread()) {
-                mainThreadTasks.add(runnable);
-            } else {
-                mFutures.add(task.submit(runnable));
+            Future<?> submit = task.submitOn(this);
+            if (submit != null) {
+                mFutures.add(submit);
             }
         }
-
-        //执行当前线程任务(平台相关：如果是Android则切换到UI线程执行)
-        Platform.get().executeOnMainThread(mainThreadTasks);
+        //执行主线程任务
+        Platform.get().execute();
     }
 
     /**

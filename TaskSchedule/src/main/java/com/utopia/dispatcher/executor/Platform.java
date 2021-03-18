@@ -5,10 +5,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
 
+import com.utopia.dispatcher.utils.ArraysUtils;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public abstract class Platform {
     protected volatile boolean cancel = false;
+    List<Runnable> mTasks = new ArrayList<>();
 
     private static final Platform PLATFORM = findPlatform();
 
@@ -25,13 +29,7 @@ public abstract class Platform {
         } catch (ClassNotFoundException ignored) {
         }
 
-        try {
-            Class.forName("java.util.Optional");
-            return new Java8();
-        } catch (ClassNotFoundException ignored) {
-        }
-
-        return new Others();
+        return new Java8();
     }
 
     /**
@@ -42,8 +40,11 @@ public abstract class Platform {
     /**
      * 切换到主线程执行任务
      */
-    public abstract void executeOnMainThread(List<Runnable> tasks);
+    public final void addTaskToMainThread(Runnable task){
+        mTasks.add(task);
+    }
 
+    public abstract void execute();
     /**
      * 只能停止未进行的任务，不能终止正在进行的任务
      */
@@ -59,12 +60,12 @@ public abstract class Platform {
         }
 
         @Override
-        public void executeOnMainThread(List<Runnable> tasks) {
-            if (tasks == null || tasks.isEmpty()) {
+        public void execute() {
+            if (ArraysUtils.isEmpty(mTasks)) {
                 return;
             }
 
-            for (Runnable runnable : tasks) {
+            for (Runnable runnable : mTasks) {
                 if (cancel){
                     break;
                 }
@@ -81,33 +82,20 @@ public abstract class Platform {
         }
 
         @Override
-        public void executeOnMainThread(List<Runnable> tasks) {
-            if (tasks == null || tasks.isEmpty()) {
+        public void execute() {
+            if (ArraysUtils.isEmpty(mTasks)) {
                 return;
             }
 
             Handler mainHandler = new Handler(Looper.getMainLooper());
             mainHandler.post(() -> {
-                for (Runnable runnable : tasks) {
+                for (Runnable runnable : mTasks) {
                     if (cancel){
                         break;
                     }
                     runnable.run();
                 }
             });
-        }
-    }
-
-    static class Others extends Platform {
-
-        @Override
-        void setThreadPriority(int priority) {
-
-        }
-
-        @Override
-        public void executeOnMainThread(List<Runnable> tasks) {
-
         }
     }
 }

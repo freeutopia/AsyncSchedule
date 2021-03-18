@@ -1,13 +1,16 @@
 package com.utopia.dispatcher.task;
 
 import android.os.Process;
-import com.utopia.dispatcher.executor.DispatcherExecutor;
+
+import com.utopia.dispatcher.Dispatcher;
+import com.utopia.dispatcher.executor.ThreadPool;
+import com.utopia.dispatcher.executor.Platform;
+import com.utopia.dispatcher.executor.RealRunnable;
 import com.utopia.dispatcher.utils.ArraysUtils;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public abstract class Task implements ITask {
@@ -55,25 +58,33 @@ public abstract class Task implements ITask {
     }
 
     /**
+     * 任务默认在非UI线程中执行
+     */
+    @Override
+    public @ScheduleOn int scheduleOn() {
+        return ScheduleOn.IO;
+    }
+
+    /**
      * Task执行在哪个线程池，默认在IO的线程池；
      * CPU 密集型的一定要切换到DispatcherExecutor.getCPUExecutor();
      */
     @Override
-    public ExecutorService getRunThread() {
-        return DispatcherExecutor.getIOExecutor();
-    }
-
-    /**
-     * 任务默认在非UI线程中执行
-     */
-    @Override
-    public boolean runOnMainThread() {
-        return false;
-    }
-
-    @Override
-    public final Future<?> submit(Runnable runnable) {
-         return getRunThread().submit(runnable);
+    public final Future<?> submitOn(Dispatcher dispatcher) {
+        Runnable runnable = new RealRunnable(this, dispatcher);
+        switch (scheduleOn()){
+            case ScheduleOn.IO:
+                ThreadPool.getIOExecutor().submit(runnable);
+                break;
+            case ScheduleOn.CPU:
+                ThreadPool.getCPUExecutor().submit(runnable);
+                break;
+            case ScheduleOn.UI:
+                //执行当前线程任务(平台相关：如果是Android则切换到UI线程执行),先加入线程队列，最后运行
+                Platform.get().addTaskToMainThread(runnable);
+                break;
+        }
+        return null;
     }
 
     /**

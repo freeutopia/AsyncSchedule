@@ -1,5 +1,6 @@
 package com.utopia.dispatcher.executor;
 
+import com.utopia.dispatcher.Dispatcher;
 import com.utopia.dispatcher.TaskDispatcher;
 import com.utopia.dispatcher.task.Task;
 
@@ -10,13 +11,13 @@ import androidx.annotation.NonNull;
  */
 public class RealRunnable implements Runnable {
     private final Task mTask;
-    private final TaskDispatcher mTaskDispatcher;
+    private final Dispatcher mTaskDispatcher;
 
     public RealRunnable(@NonNull Task task) {
         this(task,null);
     }
 
-    public RealRunnable(@NonNull Task task, TaskDispatcher dispatcher) {
+    public RealRunnable(@NonNull Task task, Dispatcher dispatcher) {
         this.mTask = task;
         this.mTaskDispatcher = dispatcher;
     }

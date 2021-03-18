@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 线程池调度，默认提供两种线程池模型io密集型和cpu密集型模型
  */
-public class DispatcherExecutor {
+public class ThreadPool {
 
     /**
      * CPU 密集型任务的线程池

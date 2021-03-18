@@ -19,7 +19,9 @@ public final class DelayDispatcher implements Dispatcher{
     private final MessageQueue.IdleHandler mIdleHandler = () -> {
         if(mDelayTasks.size()>0){
             Task task = mDelayTasks.poll();
-            new RealRunnable(task).run();
+            if (task != null) {
+                new RealRunnable(task).run();
+            }
         }
         return !mDelayTasks.isEmpty();
     };
