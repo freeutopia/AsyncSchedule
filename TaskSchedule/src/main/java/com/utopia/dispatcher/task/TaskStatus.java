@@ -1,28 +1,35 @@
 package com.utopia.dispatcher.task;
 
-public enum TaskStatus {
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+import androidx.annotation.IntDef;
+
+@IntDef({TaskStatus.WAITING, TaskStatus.RUNNING, TaskStatus.FINISHED, TaskStatus.DISPATCHERED, TaskStatus.IDEL})
+@Retention(RetentionPolicy.SOURCE)
+public @interface TaskStatus {
     /**
      * 是否正在等待
      */
-    WAITING,
+    int WAITING = 0;
 
     /**
      * 是否正在执行
      */
-    RUNNING,
+    int RUNNING = 1;
 
     /**
      * Task是否执行完成
      */
-    FINISHED,
+    int FINISHED = 2;
 
     /**
      * Task是否已经被分发
      */
-    DISPATCHERED,
+    int DISPATCHERED = 3;
 
     /**
      * 空闲状态
      */
-    IDEL
+    int IDEL = 4;
 }

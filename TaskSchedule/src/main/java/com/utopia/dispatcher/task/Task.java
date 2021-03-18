@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public abstract class Task implements ITask {
-    private volatile TaskStatus mTaskStatus = TaskStatus.IDEL;
+    private volatile @TaskStatus int mTaskStatus = TaskStatus.IDEL;
 
     // 当前Task依赖的Task数量（需要等待被依赖的Task执行完毕才能执行自己），默认没有依赖
     private final CountDownLatch mDepends = new CountDownLatch(dependsOn() == null ? 0 : dependsOn().size());
@@ -95,23 +95,15 @@ public abstract class Task implements ITask {
         return false;
     }
 
-    public boolean isRunning() {
-        return mTaskStatus == TaskStatus.RUNNING;
-    }
-
-    public boolean isFinished() {
-        return mTaskStatus == TaskStatus.FINISHED;
-    }
 
     public boolean isSend() {
         return mTaskStatus == TaskStatus.DISPATCHERED;
     }
 
-    public boolean isWaiting() {
-        return mTaskStatus == TaskStatus.WAITING;
-    }
-
-    public void updateStatus(TaskStatus status){
+    /**
+     * 更新任务执行状态
+     */
+    public void updateStatus(@TaskStatus int status){
         this.mTaskStatus = status;
     }
 }

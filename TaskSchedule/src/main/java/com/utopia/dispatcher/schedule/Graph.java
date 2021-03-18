@@ -39,7 +39,7 @@ public class Graph {
      * 拓扑排序
      */
     public Vector<Integer> topologicalSort() {
-        int indegree[] = new int[mVerticalCount];
+        int[] indegree = new int[mVerticalCount];
         for (int i = 0; i < mVerticalCount; i++) {//初始化所有点的入度数量
             ArrayList<Integer> temp = (ArrayList<Integer>) mAdj[i];
             for (int node : temp) {
@@ -55,7 +55,7 @@ public class Graph {
         int cnt = 0;
         Vector<Integer> topOrder = new Vector<Integer>();
         while (!queue.isEmpty()) {
-            int u = queue.poll();
+            Integer u = queue.poll();
             topOrder.add(u);
             for (int node : mAdj[u]) {//找到该点（入度为0）的所有邻接点
                 if (--indegree[node] == 0) {//把这个点的入度减一，如果入度变成了0，那么添加到入度0的队列里
