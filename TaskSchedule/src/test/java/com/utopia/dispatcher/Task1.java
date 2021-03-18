@@ -24,9 +24,4 @@ public class Task1 extends Task {
     public boolean needWait() {
         return true;
     }
-
-    @Override
-    public List<Class<? extends Task>> dependsOn() {
-        return Collections.singletonList(Task2.class);
-    }
 }

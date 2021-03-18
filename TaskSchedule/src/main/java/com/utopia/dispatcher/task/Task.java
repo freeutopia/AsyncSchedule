@@ -1,39 +1,41 @@
 package com.utopia.dispatcher.task;
 
 import android.os.Process;
-
 import com.utopia.dispatcher.executor.DispatcherExecutor;
+import com.utopia.dispatcher.utils.ArraysUtils;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public abstract class Task implements ITask {
-    private final String mTaskId = UUID.randomUUID().toString();//为每个task构建出唯一标识
-
-    private volatile @TaskStatus int mTaskStatus = TaskStatus.IDEL;
+    private final Set<Task> dependsTasks = new HashSet<>();
 
     // 当前Task依赖的Task数量（需要等待被依赖的Task执行完毕才能执行自己），默认没有依赖
-    private final CountDownLatch mDepends = new CountDownLatch(dependsOn() == null ? 0 : dependsOn().size());
+    private CountDownLatch mDepends = null;
 
     /**
      * 当前Task等待，让依赖的Task先执行
      */
-    public void waitToSatisfy() {
-        try {
-            mDepends.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    public final void waitToSatisfy() {
+        if (mDepends != null) {
+            try {
+                mDepends.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
     /**
      * 依赖的Task执行完一个
      */
-    public void satisfy() {
-        mDepends.countDown();
+    public final void satisfy() {
+        if (mDepends != null) {
+            mDepends.countDown();
+        }
     }
 
     /**
@@ -83,26 +85,24 @@ public abstract class Task implements ITask {
     }
 
     /**
-     * 当前Task依赖的Task集合（需要等待被依赖的Task执行完毕才能执行自己），默认没有依赖
+     * 添加依赖关系
      */
-    @Override
-    public List<Class<? extends Task>> dependsOn() {
-        return null;
-    }
+    public final void addDepends(Task... tasks){
+        if (!ArraysUtils.isEmpty(tasks)){
+            for (Task task : tasks){
+                if (task != this) {//禁止添加循环依赖
+                    dependsTasks.add(task);
+                }
+            }
+            mDepends = new CountDownLatch(dependsTasks.size());
+        }
 
-
-    public boolean isSend() {
-        return mTaskStatus == TaskStatus.DISPATCHERED;
     }
 
     /**
-     * 更新任务执行状态
+     * 当前Task依赖的Task集合（需要等待被依赖的Task执行完毕才能执行自己），默认没有依赖
      */
-    public void updateStatus(@TaskStatus int status){
-        this.mTaskStatus = status;
-    }
-
-    public String getId(){
-        return mTaskId;
+    public final Set<Task> getDependTasks() {
+        return dependsTasks;
     }
 }

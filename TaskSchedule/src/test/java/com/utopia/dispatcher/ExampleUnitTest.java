@@ -20,8 +20,10 @@ public class ExampleUnitTest {
     public void taskDispatchTest() {
         TaskDispatcher dispatcher = new TaskDispatcher();
         Task1 task1 = new Task1();
+        Task2 task2 = new Task2();
+        task1.addDepends(task1,task2);
 
-        dispatcher.add(task1).add(new Task2()).add(new Task() {
+        dispatcher.add(task1).add(task2).add(new Task() {
             @Override
             public void run() {
                 try {

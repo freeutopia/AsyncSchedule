@@ -1,23 +1,22 @@
 package com.utopia.dispatcher.executor;
 
-import android.os.Process;
-
 import com.utopia.dispatcher.TaskDispatcher;
 import com.utopia.dispatcher.task.Task;
-import com.utopia.dispatcher.task.TaskStatus;
+
+import androidx.annotation.NonNull;
 
 /**
  * 任务真正执行的地方
  */
 public class RealRunnable implements Runnable {
     private final Task mTask;
-    private TaskDispatcher mTaskDispatcher;
+    private final TaskDispatcher mTaskDispatcher;
 
-    public RealRunnable(Task task) {
-        this.mTask = task;
+    public RealRunnable(@NonNull Task task) {
+        this(task,null);
     }
 
-    public RealRunnable(Task task, TaskDispatcher dispatcher) {
+    public RealRunnable(@NonNull Task task, TaskDispatcher dispatcher) {
         this.mTask = task;
         this.mTaskDispatcher = dispatcher;
     }
@@ -27,15 +26,12 @@ public class RealRunnable implements Runnable {
         Platform.get().setThreadPriority(mTask.priority());//更新线程优先级
 
         //此处用来处理任务间的依赖关系
-        mTask.updateStatus(TaskStatus.WAITING);//更新状态机-》等待状态
         mTask.waitToSatisfy();//当前Task等待，依赖的Task先执行
 
-        // 执行Task
-        mTask.updateStatus(TaskStatus.RUNNING);//更新状态机-》运行状态
         mTask.run();//执行task任务
-        mTask.updateStatus(TaskStatus.FINISHED);
 
         if (mTaskDispatcher != null) {
+            //通知分发器，执行后续任务
             mTaskDispatcher.finish(mTask);
         }
     }

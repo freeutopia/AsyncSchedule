@@ -4,7 +4,6 @@ import com.utopia.dispatcher.executor.Platform;
 import com.utopia.dispatcher.executor.RealRunnable;
 import com.utopia.dispatcher.sort.ScheduleUtil;
 import com.utopia.dispatcher.task.Task;
-import com.utopia.dispatcher.task.TaskStatus;
 import com.utopia.dispatcher.utils.ArraysUtils;
 
 import java.util.ArrayList;
@@ -16,19 +15,16 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * 启动器调用类
- */
+
 public class TaskDispatcher implements Dispatcher {
     private volatile boolean started = false;//一个任务调度器，只能执行一次
 
-    private final List<Future<?>> mFutures = new ArrayList<>();
     private List<Task> mAllTasks = new ArrayList<>();//所有任务
-    private final List<Class<? extends Task>> mClsAllTasks = new ArrayList<>();
+    private final List<Future<?>> mFutures = new ArrayList<>();//所有异步任务
 
     //处理任务间依赖关系
-    private final List<Class<? extends Task>> mFinishedTasks = new ArrayList<>();//已经结束的Task
-    private final HashMap<Class<? extends Task>, List<Task>> mDependedHashMap = new HashMap<>();//任务间依赖树
+    private final List<Task> mFinishedTasks = new ArrayList<>();//已经结束的Task
+    private final HashMap<Task, List<Task>> mDependedHashMap = new HashMap<>();//任务间依赖树
 
     //配合task的ifNeedWait方法和Dispatcher的await方法使用，用来完成线程等待
     private final AtomicInteger mNeedWaitCount = new AtomicInteger();
@@ -42,7 +38,7 @@ public class TaskDispatcher implements Dispatcher {
         if (task != null) {
             buildDepends(task);
             mAllTasks.add(task);
-            mClsAllTasks.add(task.getClass());
+
             // 非主线程且需要wait的，主线程不需要CountDownLatch也是同步的
             if (ifNeedWait(task)) {
                 mNeedWaitCount.getAndIncrement();
@@ -57,14 +53,11 @@ public class TaskDispatcher implements Dispatcher {
             throw new IllegalThreadStateException();
 
         if (ifNeedWait(task)) {
-            mFinishedTasks.add(task.getClass());
+            mFinishedTasks.add(task);
 
             mNeedWaitCount.getAndDecrement();
             mCountDownLatch.countDown();
         }
-
-        //给任务打上结束标签
-        task.updateStatus(TaskStatus.FINISHED);
 
         //通知分发器，前置任务已完成
         preTaskFinished(task);
@@ -76,7 +69,7 @@ public class TaskDispatcher implements Dispatcher {
             throw new IllegalThreadStateException();
         started = true;
 
-        mAllTasks = ScheduleUtil.getSortResult(mAllTasks, mClsAllTasks);
+        mAllTasks = ScheduleUtil.getSortResult(mAllTasks);
         mCountDownLatch = new CountDownLatch(mNeedWaitCount.get());
 
         //分发任务
@@ -95,18 +88,20 @@ public class TaskDispatcher implements Dispatcher {
      * 构建任务间依赖关系
      */
     private void buildDepends(Task task) {
-        if (!ArraysUtils.isEmpty(task.dependsOn())) {
-            for (Class<? extends Task> cls : task.dependsOn()) {
-                List<Task> tasks = mDependedHashMap.get(cls);
-                if (tasks == null) {
-                    mDependedHashMap.put(cls, Collections.singletonList(task));
-                }else{
-                    tasks.add(task);
-                }
+        if (ArraysUtils.isEmpty(task.getDependTasks())) {
+            return;
+        }
 
-                if (mFinishedTasks.contains(cls)) {
-                    task.satisfy();
-                }
+        for (Task dependTask : task.getDependTasks()) {
+            List<Task> tasks = mDependedHashMap.get(dependTask);
+            if (tasks == null) {
+                mDependedHashMap.put(dependTask, Collections.singletonList(task));
+            }else{
+                tasks.add(task);
+            }
+
+            if (mFinishedTasks.contains(dependTask)) {
+                task.satisfy();
             }
         }
     }
@@ -122,7 +117,6 @@ public class TaskDispatcher implements Dispatcher {
         List<Runnable> mainThreadTasks = new ArrayList<>();//主线程任务
 
         for (Task task : mAllTasks) {
-            task.updateStatus(TaskStatus.DISPATCHERED);//更新任务状态->已分发
             Runnable runnable = new RealRunnable(task, this);
 
             if (task.runOnMainThread()) {
@@ -140,7 +134,7 @@ public class TaskDispatcher implements Dispatcher {
      * 通知Children一个前置任务已完成
      */
     private void preTaskFinished(Task launchTask) {
-        List<Task> tasks = mDependedHashMap.get(launchTask.getClass());
+        List<Task> tasks = mDependedHashMap.get(launchTask);
         if (tasks != null && tasks.size() > 0) {
             for (Task task : tasks) {
                 task.satisfy();

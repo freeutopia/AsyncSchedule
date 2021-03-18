@@ -29,11 +29,6 @@ public interface ITask {
     boolean runOnMainThread();
 
     /**
-     * 依赖关系
-     */
-    List<Class<? extends Task>> dependsOn();
-
-    /**
      * 异步线程执行的Task是否需要在被调用await的时候等待，默认不需要
      */
     boolean needWait();

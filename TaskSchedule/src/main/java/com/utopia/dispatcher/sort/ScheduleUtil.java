@@ -1,6 +1,7 @@
 package com.utopia.dispatcher.sort;
 
 import com.utopia.dispatcher.task.Task;
+import com.utopia.dispatcher.utils.ArraysUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,26 +13,24 @@ import androidx.collection.ArraySet;
 
 public class ScheduleUtil {
 
-    private static final List<Task> sNewTasksHigh = new ArrayList<>();// 高优先级的Task
-
     /**
      * 任务的有向无环图的拓扑排序
      */
-    public static synchronized List<Task> getSortResult(List<Task> originTasks,
-                                                        List<Class<? extends Task>> clsLaunchTasks) {
+    public static synchronized List<Task> getSortResult(List<Task> originTasks) {
 
         Set<Integer> dependSet = new ArraySet<>();
         Graph graph = new Graph(originTasks.size());
         for (int i = 0; i < originTasks.size(); i++) {
             Task task = originTasks.get(i);
-            if (task.isSend() || task.dependsOn() == null || task.dependsOn().size() == 0) {
+            Set<Task> dTasks = task.getDependTasks();
+            if (ArraysUtils.isEmpty(dTasks)) {
                 continue;
             }
-            for (Class<?> cls : task.dependsOn()) {
-                int indexOfDepend = getIndexOfTask(originTasks, clsLaunchTasks, cls);
+            for (Task dTask : dTasks) {
+                int indexOfDepend = getIndexOfTask(originTasks, dTask.getClass());
                 if (indexOfDepend < 0) {
                     throw new IllegalStateException(task.getClass().getSimpleName() +
-                            " depends on " + cls.getSimpleName() + " can not be found in task list ");
+                            " depends on " + dTask.getClass().getSimpleName() + " can not be found in task list ");
                 }
                 dependSet.add(indexOfDepend);
                 graph.addEdge(indexOfDepend, i);
@@ -43,9 +42,8 @@ public class ScheduleUtil {
     }
 
     @NonNull
-    private static List<Task> getResultTasks(List<Task> originTasks,
-                                             Set<Integer> dependSet, List<Integer> indexList) {
-        List<Task> newTasksAll = new ArrayList<>(originTasks.size());
+    private static List<Task> getResultTasks(List<Task> originTasks, Set<Integer> dependSet, List<Integer> indexList) {
+
         List<Task> newTasksDepended = new ArrayList<>();// 被别人依赖的
         List<Task> newTasksWithOutDepend = new ArrayList<>();// 没有依赖的
         List<Task> newTasksRunAsSoon = new ArrayList<>();// 需要提升自己优先级的，先执行（这个先是相对于没有依赖的先）
@@ -62,36 +60,23 @@ public class ScheduleUtil {
             }
         }
         // 顺序：被别人依赖的————》需要提升自己优先级的————》需要被等待的————》没有依赖的
-        sNewTasksHigh.addAll(newTasksDepended);
-        sNewTasksHigh.addAll(newTasksRunAsSoon);
-        newTasksAll.addAll(sNewTasksHigh);
+        List<Task> newTasksAll = new ArrayList<>(originTasks.size());
+        newTasksAll.addAll(newTasksDepended);
+        newTasksAll.addAll(newTasksRunAsSoon);
         newTasksAll.addAll(newTasksWithOutDepend);
         return newTasksAll;
-    }
-
-
-    public static List<Task> getTasksHigh() {
-        return sNewTasksHigh;
     }
 
     /**
      * 获取任务在任务列表中的下标
      */
-    private static int getIndexOfTask(List<Task> originTasks,
-                                      List<Class<? extends Task>> clsLaunchTasks,
-                                      Class<?> cls) {
-        int index = clsLaunchTasks.indexOf(cls);
-        if (index >= 0) {
-            return index;
-        }
-
-        // 仅仅是保护性代码
+    private static int getIndexOfTask(List<Task> originTasks, Class<? extends Task> taskClass) {
         final int size = originTasks.size();
         for (int i = 0; i < size; i++) {
-            if (cls.getSimpleName().equals(originTasks.get(i).getClass().getSimpleName())) {
+            if (taskClass == originTasks.get(i).getClass()) {
                 return i;
             }
         }
-        return index;
+        return 0;
     }
 }
