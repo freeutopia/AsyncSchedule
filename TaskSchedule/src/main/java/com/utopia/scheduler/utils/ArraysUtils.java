@@ -1,6 +1,6 @@
-package com.utopia.dispatcher.utils;
+package com.utopia.scheduler.utils;
 
-import com.utopia.dispatcher.task.Task;
+import com.utopia.scheduler.job.IJob;
 
 import java.util.List;
 import java.util.Set;
@@ -15,7 +15,7 @@ public class ArraysUtils {
         return objects == null || objects.isEmpty();
     }
 
-    public static boolean isEmpty(Task... tasks) {
-        return tasks == null || tasks.length == 0;
+    public static boolean isEmpty(IJob... objects) {
+        return objects == null || objects.length == 0;
     }
 }

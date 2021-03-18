@@ -5,8 +5,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.utopia.dispatcher.task.Task;
-import com.utopia.dispatcher.TaskDispatcher;
+import com.utopia.scheduler.job.Job;
+import com.utopia.scheduler.Scheduler;
 
 import java.util.concurrent.TimeUnit;
 
@@ -20,8 +20,8 @@ public class MainActivity extends AppCompatActivity {
         new Thread().interrupt();
 
         Log.e("test","我执行了onCreate");
-        TaskDispatcher dispatcher = new TaskDispatcher();
-        dispatcher.add(new Task() {
+        Scheduler dispatcher = new Scheduler();
+        dispatcher.add(new Job() {
             @Override
             public void run() {
                 try {
@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-        }).add(new Task() {
+        }).add(new Job() {
             @Override
             public void run() {
                 try {
@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-        }).add(new Task() {
+        }).add(new Job() {
             @Override
             public void run() {
                 try {

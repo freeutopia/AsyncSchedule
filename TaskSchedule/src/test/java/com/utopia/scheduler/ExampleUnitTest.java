@@ -1,14 +1,10 @@
-package com.utopia.dispatcher;
+package com.utopia.scheduler;
 
-import android.util.Log;
-
-import com.utopia.dispatcher.task.Task;
+import com.utopia.scheduler.job.Job;
 
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.*;
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -18,12 +14,12 @@ import static org.junit.Assert.*;
 public class ExampleUnitTest {
     @Test
     public void taskDispatchTest() {
-        TaskDispatcher dispatcher = new TaskDispatcher();
-        Task1 task1 = new Task1();
-        Task2 task2 = new Task2();
+        Scheduler dispatcher = new Scheduler();
+        Job1 task1 = new Job1();
+        Job2 task2 = new Job2();
         task1.addDepends(task1,task2);
 
-        dispatcher.add(task1).add(task2).add(new Task() {
+        dispatcher.add(task1).add(task2).add(new Job() {
             @Override
             public void run() {
                 try {

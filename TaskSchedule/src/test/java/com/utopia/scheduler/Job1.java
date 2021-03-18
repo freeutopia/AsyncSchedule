@@ -1,13 +1,11 @@
-package com.utopia.dispatcher;
+package com.utopia.scheduler;
 
-import com.utopia.dispatcher.task.Task;
+import com.utopia.scheduler.job.Job;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 
-public class Task1 extends Task {
+public class Job1 extends Job {
     @Override
     public void run() {
         try {

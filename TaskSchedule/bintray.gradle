@@ -1,0 +1,90 @@
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'com.github.dcendents.android-maven'
+
+def siteUrl = 'https://github.com/freeutopia'
+def gitUrl = "https://github.com/freeutopia/AndTaskSchedule.git"
+
+version = "1.0.0"
+group = "com.utopia"
+
+//加载资源
+Properties properties = new Properties()
+InputStream inputStream = project.rootProject.file('local.properties').newDataInputStream() ;
+properties.load( inputStream )
+
+
+bintray {
+    user =  properties.getProperty('bintray.user')
+    key = properties.getProperty('bintray.apiKey')
+
+    println user
+    pkg {
+        repo = 'utopia'
+        name = "dispatcher"
+        licenses = ["Apache-2.0"]
+        websiteUrl = siteUrl
+        vcsUrl = gitUrl
+        publish = true // 是否是公开项目。
+
+        version {
+            name = version
+            desc = 'java并行任务处理工具类'
+            released = new Date()
+            vcsTag = "v"+ version
+        }
+    }
+    configurations = ['archives']
+}
+
+
+install {
+    repositories.mavenInstaller {
+        // This generates POM.xml with proper parameters
+        pom {
+            project {
+                packaging 'aar'
+                // Add your description here
+                name "dispatcher"
+                description 'java并行任务处理工具类'
+                url siteUrl
+                // Set your license
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id 'free_utopia'
+                        name '刘涛'
+                        email 'free_utopia@163.com'
+                    }
+                }
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+                }
+            }
+        }
+    }
+}
+
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+task javadoc(type: Javadoc) {
+    failOnError false
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}

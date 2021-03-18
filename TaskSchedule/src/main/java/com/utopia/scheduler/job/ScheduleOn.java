@@ -1,4 +1,4 @@
-package com.utopia.dispatcher.task;
+package com.utopia.scheduler.job;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

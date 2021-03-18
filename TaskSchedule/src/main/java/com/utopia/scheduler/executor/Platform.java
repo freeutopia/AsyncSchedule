@@ -1,18 +1,18 @@
-package com.utopia.dispatcher.executor;
+package com.utopia.scheduler.executor;
 
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
 
-import com.utopia.dispatcher.utils.ArraysUtils;
+import com.utopia.scheduler.utils.ArraysUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public abstract class Platform {
     protected volatile boolean cancel = false;
-    List<Runnable> mTasks = new ArrayList<>();
+    List<Runnable> mJobs = new ArrayList<>();
 
     private static final Platform PLATFORM = findPlatform();
 
@@ -40,8 +40,8 @@ public abstract class Platform {
     /**
      * 切换到主线程执行任务
      */
-    public final void addTaskToMainThread(Runnable task){
-        mTasks.add(task);
+    public final void addToMainThread(Runnable runnable){
+        mJobs.add(runnable);
     }
 
     public abstract void execute();
@@ -61,15 +61,15 @@ public abstract class Platform {
 
         @Override
         public void execute() {
-            if (ArraysUtils.isEmpty(mTasks)) {
+            if (ArraysUtils.isEmpty(mJobs)) {
                 return;
             }
 
-            for (Runnable runnable : mTasks) {
+            for (Runnable job : mJobs) {
                 if (cancel){
                     break;
                 }
-                runnable.run();
+                job.run();
             }
         }
     }
@@ -83,17 +83,17 @@ public abstract class Platform {
 
         @Override
         public void execute() {
-            if (ArraysUtils.isEmpty(mTasks)) {
+            if (ArraysUtils.isEmpty(mJobs)) {
                 return;
             }
 
             Handler mainHandler = new Handler(Looper.getMainLooper());
             mainHandler.post(() -> {
-                for (Runnable runnable : mTasks) {
+                for (Runnable job : mJobs) {
                     if (cancel){
                         break;
                     }
-                    runnable.run();
+                    job.run();
                 }
             });
         }

@@ -1,4 +1,4 @@
-package com.utopia.dispatcher.executor;
+package com.utopia.scheduler.executor;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 线程池调度，默认提供两种线程池模型io密集型和cpu密集型模型
  */
-public class ThreadPool {
+public class ExecutorFactory {
 
     /**
      * CPU 密集型任务的线程池

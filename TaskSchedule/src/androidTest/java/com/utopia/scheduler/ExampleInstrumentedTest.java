@@ -1,4 +1,4 @@
-package com.utopia.dispatcher;
+package com.utopia.scheduler;
 
 import android.content.Context;
 

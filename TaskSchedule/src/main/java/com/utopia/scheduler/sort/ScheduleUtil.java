@@ -1,7 +1,7 @@
-package com.utopia.dispatcher.sort;
+package com.utopia.scheduler.sort;
 
-import com.utopia.dispatcher.task.Task;
-import com.utopia.dispatcher.utils.ArraysUtils;
+import com.utopia.scheduler.job.IJob;
+import com.utopia.scheduler.utils.ArraysUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,23 +10,21 @@ import java.util.Set;
 import androidx.annotation.NonNull;
 import androidx.collection.ArraySet;
 
-
 public class ScheduleUtil {
 
     /**
      * 任务的有向无环图的拓扑排序
      */
-    public static synchronized List<Task> getSortResult(List<Task> originTasks) {
-
+    public static synchronized List<IJob> getSortResult(List<IJob> originTasks) {
         Set<Integer> dependSet = new ArraySet<>();
         Graph graph = new Graph(originTasks.size());
         for (int i = 0; i < originTasks.size(); i++) {
-            Task task = originTasks.get(i);
-            Set<Task> dTasks = task.getDependTasks();
+            IJob task = originTasks.get(i);
+            Set<IJob> dTasks = task.getDependTasks();
             if (ArraysUtils.isEmpty(dTasks)) {
                 continue;
             }
-            for (Task dTask : dTasks) {
+            for (IJob dTask : dTasks) {
                 int indexOfDepend = getIndexOfTask(originTasks, dTask.getClass());
                 if (indexOfDepend < 0) {
                     throw new IllegalStateException(task.getClass().getSimpleName() +
@@ -42,16 +40,16 @@ public class ScheduleUtil {
     }
 
     @NonNull
-    private static List<Task> getResultTasks(List<Task> originTasks, Set<Integer> dependSet, List<Integer> indexList) {
+    private static List<IJob> getResultTasks(List<IJob> originTasks, Set<Integer> dependSet, List<Integer> indexList) {
 
-        List<Task> newTasksDepended = new ArrayList<>();// 被别人依赖的
-        List<Task> newTasksWithOutDepend = new ArrayList<>();// 没有依赖的
-        List<Task> newTasksRunAsSoon = new ArrayList<>();// 需要提升自己优先级的，先执行（这个先是相对于没有依赖的先）
+        List<IJob> newTasksDepended = new ArrayList<>();// 被别人依赖的
+        List<IJob> newTasksWithOutDepend = new ArrayList<>();// 没有依赖的
+        List<IJob> newTasksRunAsSoon = new ArrayList<>();// 需要提升自己优先级的，先执行（这个先是相对于没有依赖的先）
         for (int index : indexList) {
             if (dependSet.contains(index)) {
                 newTasksDepended.add(originTasks.get(index));
             } else {
-                Task task = originTasks.get(index);
+                IJob task = originTasks.get(index);
                 if (task.needRunAsSoon()) {
                     newTasksRunAsSoon.add(task);
                 } else {
@@ -60,7 +58,7 @@ public class ScheduleUtil {
             }
         }
         // 顺序：被别人依赖的————》需要提升自己优先级的————》需要被等待的————》没有依赖的
-        List<Task> newTasksAll = new ArrayList<>(originTasks.size());
+        List<IJob> newTasksAll = new ArrayList<>(originTasks.size());
         newTasksAll.addAll(newTasksDepended);
         newTasksAll.addAll(newTasksRunAsSoon);
         newTasksAll.addAll(newTasksWithOutDepend);
@@ -70,7 +68,7 @@ public class ScheduleUtil {
     /**
      * 获取任务在任务列表中的下标
      */
-    private static int getIndexOfTask(List<Task> originTasks, Class<? extends Task> taskClass) {
+    private static int getIndexOfTask(List<IJob> originTasks, Class<? extends IJob> taskClass) {
         final int size = originTasks.size();
         for (int i = 0; i < size; i++) {
             if (taskClass == originTasks.get(i).getClass()) {
