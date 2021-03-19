@@ -17,13 +17,11 @@ public class ExampleUnitTest {
         Scheduler dispatcher = new Scheduler();
         Job1 task1 = new Job1();
         Job2 task2 = new Job2();
-        task1.addDepends(task1,task2);
 
         dispatcher.add(task1).add(task2).add(new Job() {
             @Override
             public void run() {
                 try {
-                    System.out.println("进入了Task");
                     TimeUnit.SECONDS.sleep(2);
                 } catch (InterruptedException e) {
                     e.printStackTrace();

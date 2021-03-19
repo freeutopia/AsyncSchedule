@@ -20,7 +20,7 @@ bintray {
     println user
     pkg {
         repo = 'utopia'
-        name = "dispatcher"
+        name = "schedule"
         licenses = ["Apache-2.0"]
         websiteUrl = siteUrl
         vcsUrl = gitUrl
@@ -44,7 +44,7 @@ install {
             project {
                 packaging 'aar'
                 // Add your description here
-                name "dispatcher"
+                name "schedule"
                 description 'java并行任务处理工具类'
                 url siteUrl
                 // Set your license
